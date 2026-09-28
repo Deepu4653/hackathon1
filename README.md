@@ -240,7 +240,64 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
    Mapbox directly with the same public `pk.` token, and the UI says so. Secret `sk.` tokens are never sent
    to a browser. `npm run test:integrations` checks the token.
 
-### 6.4 Market prices (optional)
+### 6.4 Applying the schema with the Supabase SQL editor
+
+Everything the database needs — 22 tables, 44 indexes, 6 triggers, 63 policies and
+the 3 storage buckets — is in one generated file. No CLI, no migrations table to
+keep in sync.
+
+1. **Generate the file** (any machine, no internet needed):
+   ```bash
+   npm run supabase:sql -- --seed
+   ```
+   That writes two files:
+   * `supabase/remote/setup+seed.sql` — the schema plus reference data (crops,
+     categories). Every administrative action in the app is disabled from the CLI.
+   * `supabase/remote/verify.sql` — a read-only report you run afterwards.
+
+2. **Open the SQL editor** in your project:
+   `https://supabase.com/dashboard/project/<PROJECT-REF>/sql/new`
+   (or Dashboard → **SQL Editor** → **New query**). `<PROJECT-REF>` is the
+   sub-domain of your project URL — `qoixrypagrxdhzpgjbtw` for this project.
+
+3. **Paste the whole of `setup+seed.sql`** and press **Run**. It is wrapped in a
+   single `begin; … commit;`, so a failure leaves the project untouched — fix the
+   reported line and run it again. It is safe to re-run: every statement is
+   `if not exists` / `on conflict do update`.
+
+4. **Check it.** Paste `verify.sql` into a new query and press **Run**. One row,
+   nine numbers, one verdict — you want:
+   `OK — schema, RLS, buckets and reference data are in place`
+   (`expected_tables_missing = 0`, `tables_without_rls = 0`,
+   `policies_using_true = 0`, `storage_buckets = 3`, `crops = 22`,
+   `categories = 32`, `market_prices = 0`).
+
+5. **Point the app at it.** Fill in `.env.local`:
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://<PROJECT-REF>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_…   # Settings → API Keys
+   SUPABASE_SERVICE_ROLE_KEY=sb_secret_…            # server only, never exposed
+   ```
+   and **remove the `DATA_BACKEND=local` line** (it exists only for the offline
+   sandbox this repository was developed in). Restart the app.
+
+6. **Verify end to end** from a machine with internet:
+   ```bash
+   npm run test:supabase
+   ```
+   It creates a disposable account, signs it in, and checks that anonymous
+   visitors are refused on `profiles` / `farms` / `messages`, that a user can read
+   only their own profile, that the service role can read, and that the three
+   buckets exist.
+
+Creating the first administrator: sign up normally, then either add your email to
+`ADMIN_EMAILS` before signing in, or set `profiles.role = 'admin'` for that row in
+the SQL editor:
+```sql
+update public.profiles set role = 'admin' where id = (select id from auth.users where email = 'you@example.com');
+```
+
+### 6.5 Market prices (optional)
 1. Register at [data.gov.in](https://data.gov.in) and copy your API key into `DATA_GOV_IN_API_KEY`.
 2. An administrator opens **Market prices** and presses *Import*. Every imported row keeps its
    `source`, `source_url` and `price_date`; the app shows those on screen and never invents a price.

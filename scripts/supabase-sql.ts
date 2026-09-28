@@ -44,6 +44,67 @@ function header(title: string, files: string[]) {
   ].join("\n");
 }
 
+/** Paste into the SQL editor after `setup+seed.sql` for a one-screen report. */
+const VERIFY_SQL = `-- X-FARM AI · verification report
+-- Run this in Supabase → SQL Editor after setup+seed.sql. It only reads.
+
+with expected_tables as (
+  select unnest(array[
+    'profiles', 'farms', 'crops', 'soil_records', 'crop_records', 'crop_analyses',
+    'weather_records', 'categories', 'listings', 'listing_images', 'machinery',
+    'favorites', 'conversations', 'messages', 'notifications', 'reports',
+    'market_prices', 'market_price_imports', 'ai_conversations', 'ai_messages',
+    'audit_logs', 'usage_events'
+  ]) as name
+),
+missing_tables as (
+  select count(*) as missing
+  from expected_tables e
+  where not exists (
+    select 1 from pg_tables t where t.schemaname = 'public' and t.tablename = e.name
+  )
+),
+stats as (
+  select
+    (select count(*) from pg_tables where schemaname = 'public') as public_tables,
+    (select count(*) from pg_tables
+       where schemaname = 'public'
+         and not rowsecurity
+         and tablename <> 'x_farm_migrations') as tables_without_rls,
+    (select count(*) from pg_policies where schemaname = 'public') as policies,
+    (select count(*) from pg_policies where schemaname = 'public' and qual = 'true') as policies_using_true,
+    (select count(*) from storage.buckets
+       where id in ('avatars', 'listing-images', 'crop-images')) as storage_buckets,
+    (select count(*) from public.crops) as crops,
+    (select count(*) from public.categories) as categories,
+    (select count(*) from public.market_prices) as market_prices
+)
+select
+  s.public_tables,
+  m.missing as expected_tables_missing,
+  s.tables_without_rls,
+  s.policies,
+  s.policies_using_true,
+  s.storage_buckets,
+  s.crops,
+  s.categories,
+  s.market_prices,
+  case
+    when m.missing = 0
+     and s.tables_without_rls = 0
+     and s.policies >= 57
+     and s.policies_using_true = 0
+     and s.storage_buckets = 3
+     and s.crops > 0
+     and s.categories > 0
+    then 'OK — schema, RLS, buckets and reference data are in place'
+    when m.missing > 0
+    then 'FAILED — expected_tables_missing > 0: the setup did not finish, run setup+seed.sql again'
+    else 'CHECK — read the numbers above against section 6.5 of README.md'
+  end as verdict
+from stats s, missing_tables m;
+`;
+
 async function main() {
   const entries = (await fs.readdir(migrationsDir)).filter((file) => file.endsWith(".sql")).sort();
   if (entries.length === 0) throw new Error("No migration files found in supabase/migrations.");
@@ -81,10 +142,16 @@ async function main() {
   const outFile = path.join(outDir, withSeed ? "setup+seed.sql" : "setup.sql");
   await fs.writeFile(outFile, parts.join("\n"), "utf8");
 
+  // A small companion query so "did it work?" is answerable inside the SQL
+  // editor as well, without waiting for `npm run test:supabase`.
+  const verifyFile = path.join(outDir, "verify.sql");
+  await fs.writeFile(verifyFile, VERIFY_SQL, "utf8");
+
   const relative = path.relative(root, outFile);
   console.log(`Wrote ${relative}`);
   console.log(`  migrations: ${entries.length}`);
   console.log(`  seed data : ${withSeed ? "included" : "not included (add --seed)"}`);
+  console.log(`Wrote ${path.relative(root, verifyFile)}`);
   console.log("\nPaste that file into Supabase → SQL Editor → Run, then check the project with:");
   console.log("  npm run test:supabase");
 }
