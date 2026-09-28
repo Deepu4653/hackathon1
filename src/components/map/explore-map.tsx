@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Crosshair, Loader2, MapPin, Search, Tractor, Store, Wheat } from "lucide-react";
 import { Badge, Callout } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/provider";
+import { canGeocodeInBrowser, searchPlacesInBrowser } from "@/lib/maps/browser-search";
 import { InteractiveMap } from "./interactive-map";
 
 export interface ExplorePin {
@@ -61,27 +62,53 @@ export function ExploreMap({
   const [centre, setCentre] = useState<{ latitude: number; longitude: number } | null>(initialCentre);
   const [selected, setSelected] = useState<{ latitude: number; longitude: number } | null>(initialCentre);
   const [locating, setLocating] = useState(false);
+  const [usedBrowserSearch, setUsedBrowserSearch] = useState(false);
 
   const visiblePins = filter === "all" ? pins : pins.filter((pin) => pin.kind === filter);
 
+  /**
+   * Last resort for address search: the server-side proxy could not reach a
+   * geocoder, but the visitor's browser can. Only public `pk.` tokens are used.
+   */
+  async function searchInBrowser(query: string): Promise<boolean> {
+    const publicToken = token;
+    if (!canGeocodeInBrowser(publicToken)) return false;
+    try {
+      const found = await searchPlacesInBrowser(query, publicToken, centre);
+      if (found.length === 0) return false;
+      setPlaces(found);
+      setUsedBrowserSearch(true);
+      setSearchError(null);
+      setCentre({ latitude: found[0].latitude, longitude: found[0].longitude });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function runSearch(event: React.FormEvent) {
     event.preventDefault();
-    if (query.trim().length < 3) {
+    const trimmed = query.trim();
+    if (trimmed.length < 3) {
       setSearchError(t("map.searchHint"));
       return;
     }
     setSearching(true);
     setSearchError(null);
     try {
-      const response = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`, { cache: "no-store" });
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, { cache: "no-store" });
       const payload = (await response.json()) as { ok?: boolean; places?: Place[] };
-      if (!response.ok || !payload.ok) throw new Error("search failed");
-      const found = payload.places ?? [];
-      setPlaces(found);
-      if (found.length === 0) setSearchError(t("map.noSearchResults"));
-      if (found[0]) setCentre({ latitude: found[0].latitude, longitude: found[0].longitude });
+      if (response.ok && payload.ok) {
+        const found = payload.places ?? [];
+        setPlaces(found);
+        setUsedBrowserSearch(false);
+        if (found.length === 0) setSearchError(t("map.noSearchResults"));
+        if (found[0]) setCentre({ latitude: found[0].latitude, longitude: found[0].longitude });
+        return;
+      }
+      if (!(await searchInBrowser(trimmed))) setSearchError(t("errors.network"));
     } catch {
-      setSearchError(t("errors.network"));
+      if (!(await searchInBrowser(trimmed))) setSearchError(t("errors.network"));
     } finally {
       setSearching(false);
     }
@@ -143,6 +170,7 @@ export function ExploreMap({
         </button>
 
         {searchError ? <Callout tone="warning" title={t("map.title")}>{searchError}</Callout> : null}
+        {usedBrowserSearch ? <p className="text-xs text-ink-500">{t("map.browserSearchNote")}</p> : null}
 
         {places.length > 0 ? (
           <ul className="space-y-1.5">

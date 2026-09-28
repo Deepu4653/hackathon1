@@ -962,6 +962,9 @@ export const en = {
   "recommend.suitability.possible": "Possible, with care",
   "soil.hint.unknown": "No reference range for this reading",
   "common.whereToGet": "Where to get it →",
+  "weather.browserFetchNote": "This server has no outbound internet access, so your browser fetched this forecast straight from Open-Meteo — same source, same mapping, nothing estimated.",
+  "weather.refreshNow": "Refresh forecast",
+  "map.browserSearchNote": "This server has no internet access, so the search went straight from your browser to Mapbox.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

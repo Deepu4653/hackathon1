@@ -4,6 +4,11 @@
  * Free, keyless, and the only source of weather in X-FARM AI. Nothing here is
  * ever synthesised: if the request fails, the caller shows "Weather data is
  * temporarily unavailable." rather than a made-up number.
+ *
+ * `forecastUrl()` and `buildSnapshot()` are pure and import-safe in the browser:
+ * when a deployment's SERVER has no outbound internet (some sandboxes only allow
+ * the npm registry), <LiveWeather> asks Open-Meteo from the visitor's browser
+ * instead — same provider, same endpoint, same mapping, real data either way.
  */
 
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -154,24 +159,11 @@ function buildAlerts(input: {
   return alerts;
 }
 
-export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherOutcome> {
-  if (
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
-  ) {
-    return { ok: false, reason: "invalid_location", message: "That location is not valid." };
-  }
-
-  const key = cacheKey(latitude, longitude);
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return { ok: true, snapshot: cached.value };
-  }
-
+/**
+ * The exact Open-Meteo request X-FARM AI makes, as a pure function so the server
+ * and the browser-fallback build an identical URL (Open-Meteo is CORS-enabled).
+ */
+export function forecastUrl(latitude: number, longitude: number): string {
   const params = new URLSearchParams({
     latitude: latitude.toFixed(4),
     longitude: longitude.toFixed(4),
@@ -197,12 +189,126 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     forecast_days: "7",
     wind_speed_unit: "kmh",
   });
+  return `${FORECAST_URL}?${params.toString()}`;
+}
+
+export interface OpenMeteoPayload {
+  timezone?: string;
+  current?: Record<string, unknown>;
+  hourly?: Record<string, unknown>;
+  daily?: Record<string, unknown>;
+}
+
+/**
+ * Pure mapping from the Open-Meteo response to the snapshot the UI renders.
+ * Every value comes from the provider or is null — nothing is estimated here.
+ */
+export function buildSnapshot(
+  payload: OpenMeteoPayload,
+  latitude: number,
+  longitude: number,
+  observedAt = new Date().toISOString(),
+): WeatherSnapshot {
+  const currentBlock = payload.current ?? {};
+  const currentCode = numeric(currentBlock.weather_code) ?? 0;
+
+  const hourlyTimes = (payload.hourly?.time as string[] | undefined) ?? [];
+  const hourlyTemps = (payload.hourly?.temperature_2m as number[] | undefined) ?? [];
+  const hourlyRain = (payload.hourly?.precipitation_probability as number[] | undefined) ?? [];
+  const hourlyPrecip = (payload.hourly?.precipitation as number[] | undefined) ?? [];
+  const nowIso = observedAt;
+  const upcoming: WeatherHour[] = hourlyTimes
+    .map((time, index) => ({
+      time,
+      temperatureC: numeric(hourlyTemps[index]),
+      rainProbabilityPct: numeric(hourlyRain[index]),
+      precipitationMm: numeric(hourlyPrecip[index]),
+    }))
+    .filter((hour) => new Date(hour.time).getTime() >= Date.now() - 60 * 60 * 1000)
+    .slice(0, 24);
+
+  const dailyTimes = (payload.daily?.time as string[] | undefined) ?? [];
+  const dailyCodes = (payload.daily?.weather_code as number[] | undefined) ?? [];
+  const dailyMax = (payload.daily?.temperature_2m_max as number[] | undefined) ?? [];
+  const dailyMin = (payload.daily?.temperature_2m_min as number[] | undefined) ?? [];
+  const dailyRainSum = (payload.daily?.precipitation_sum as number[] | undefined) ?? [];
+  const dailyRainChance = (payload.daily?.precipitation_probability_max as number[] | undefined) ?? [];
+  const dailyWind = (payload.daily?.wind_speed_10m_max as number[] | undefined) ?? [];
+
+  const daily: WeatherDay[] = dailyTimes.map((date, index) => ({
+    date,
+    conditionCode: numeric(dailyCodes[index]) ?? 0,
+    conditionText: weatherCodeText(numeric(dailyCodes[index]) ?? 0),
+    tempMaxC: numeric(dailyMax[index]),
+    tempMinC: numeric(dailyMin[index]),
+    precipitationSumMm: numeric(dailyRainSum[index]),
+    rainProbabilityPct: numeric(dailyRainChance[index]),
+    windMaxKph: numeric(dailyWind[index]),
+  }));
+
+  const todayRainChance = daily[0]?.rainProbabilityPct ?? null;
+  const currentRainChance =
+    todayRainChance !== null
+      ? todayRainChance
+      : upcoming.length > 0
+        ? upcoming.slice(0, 6).reduce<number | null>((best, hour) => {
+            if (hour.rainProbabilityPct === null) return best;
+            return best === null ? hour.rainProbabilityPct : Math.max(best, hour.rainProbabilityPct);
+          }, null)
+        : null;
+
+  const current: WeatherSnapshot["current"] = {
+    temperatureC: numeric(currentBlock.temperature_2m),
+    feelsLikeC: numeric(currentBlock.apparent_temperature),
+    humidityPct: numeric(currentBlock.relative_humidity_2m),
+    windKph: numeric(currentBlock.wind_speed_10m),
+    windDirectionDeg: numeric(currentBlock.wind_direction_10m),
+    precipitationMm: numeric(currentBlock.precipitation),
+    rainProbabilityPct: currentRainChance,
+    conditionCode: currentCode,
+    conditionText: weatherCodeText(currentCode),
+  };
+
+  const snapshot: WeatherSnapshot = {
+    latitude,
+    longitude,
+    timezone: payload.timezone ?? "auto",
+    observedAt: nowIso,
+    fetchedAt: nowIso,
+    source: "open-meteo",
+    sourceUrl: "https://open-meteo.com/",
+    current,
+    daily,
+    hourly: upcoming,
+    alerts: buildAlerts({ current, today: daily[0], nextThreeDays: daily.slice(1, 4) }),
+  };
+
+  return snapshot;
+}
+
+export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherOutcome> {
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return { ok: false, reason: "invalid_location", message: "That location is not valid." };
+  }
+
+  const key = cacheKey(latitude, longitude);
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return { ok: true, snapshot: cached.value };
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${FORECAST_URL}?${params.toString()}`, {
+    const response = await fetch(forecastUrl(latitude, longitude), {
       signal: controller.signal,
       cache: "no-store",
       headers: { Accept: "application/json" },
@@ -212,87 +318,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
       return { ok: false, reason: "unavailable", message: "Weather data is temporarily unavailable." };
     }
 
-    const payload = (await response.json()) as {
-      timezone?: string;
-      current?: Record<string, unknown>;
-      hourly?: Record<string, unknown>;
-      daily?: Record<string, unknown>;
-    };
-
-    const currentBlock = payload.current ?? {};
-    const currentCode = numeric(currentBlock.weather_code) ?? 0;
-
-    const hourlyTimes = (payload.hourly?.time as string[] | undefined) ?? [];
-    const hourlyTemps = (payload.hourly?.temperature_2m as number[] | undefined) ?? [];
-    const hourlyRain = (payload.hourly?.precipitation_probability as number[] | undefined) ?? [];
-    const hourlyPrecip = (payload.hourly?.precipitation as number[] | undefined) ?? [];
-    const nowIso = new Date().toISOString();
-    const upcoming: WeatherHour[] = hourlyTimes
-      .map((time, index) => ({
-        time,
-        temperatureC: numeric(hourlyTemps[index]),
-        rainProbabilityPct: numeric(hourlyRain[index]),
-        precipitationMm: numeric(hourlyPrecip[index]),
-      }))
-      .filter((hour) => new Date(hour.time).getTime() >= Date.now() - 60 * 60 * 1000)
-      .slice(0, 24);
-
-    const dailyTimes = (payload.daily?.time as string[] | undefined) ?? [];
-    const dailyCodes = (payload.daily?.weather_code as number[] | undefined) ?? [];
-    const dailyMax = (payload.daily?.temperature_2m_max as number[] | undefined) ?? [];
-    const dailyMin = (payload.daily?.temperature_2m_min as number[] | undefined) ?? [];
-    const dailyRainSum = (payload.daily?.precipitation_sum as number[] | undefined) ?? [];
-    const dailyRainChance = (payload.daily?.precipitation_probability_max as number[] | undefined) ?? [];
-    const dailyWind = (payload.daily?.wind_speed_10m_max as number[] | undefined) ?? [];
-
-    const daily: WeatherDay[] = dailyTimes.map((date, index) => ({
-      date,
-      conditionCode: numeric(dailyCodes[index]) ?? 0,
-      conditionText: weatherCodeText(numeric(dailyCodes[index]) ?? 0),
-      tempMaxC: numeric(dailyMax[index]),
-      tempMinC: numeric(dailyMin[index]),
-      precipitationSumMm: numeric(dailyRainSum[index]),
-      rainProbabilityPct: numeric(dailyRainChance[index]),
-      windMaxKph: numeric(dailyWind[index]),
-    }));
-
-    const todayRainChance = daily[0]?.rainProbabilityPct ?? null;
-    const currentRainChance =
-      todayRainChance !== null
-        ? todayRainChance
-        : upcoming.length > 0
-          ? upcoming.slice(0, 6).reduce<number | null>((best, hour) => {
-              if (hour.rainProbabilityPct === null) return best;
-              return best === null ? hour.rainProbabilityPct : Math.max(best, hour.rainProbabilityPct);
-            }, null)
-          : null;
-
-    const current: WeatherSnapshot["current"] = {
-      temperatureC: numeric(currentBlock.temperature_2m),
-      feelsLikeC: numeric(currentBlock.apparent_temperature),
-      humidityPct: numeric(currentBlock.relative_humidity_2m),
-      windKph: numeric(currentBlock.wind_speed_10m),
-      windDirectionDeg: numeric(currentBlock.wind_direction_10m),
-      precipitationMm: numeric(currentBlock.precipitation),
-      rainProbabilityPct: currentRainChance,
-      conditionCode: currentCode,
-      conditionText: weatherCodeText(currentCode),
-    };
-
-    const snapshot: WeatherSnapshot = {
-      latitude,
-      longitude,
-      timezone: payload.timezone ?? "auto",
-      observedAt: nowIso,
-      fetchedAt: nowIso,
-      source: "open-meteo",
-      sourceUrl: "https://open-meteo.com/",
-      current,
-      daily,
-      hourly: upcoming,
-      alerts: buildAlerts({ current, today: daily[0], nextThreeDays: daily.slice(1, 4) }),
-    };
-
+    const snapshot = buildSnapshot((await response.json()) as OpenMeteoPayload, latitude, longitude);
     cache.set(key, { at: Date.now(), value: snapshot });
     return { ok: true, snapshot };
   } catch {

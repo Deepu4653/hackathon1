@@ -24,6 +24,7 @@ import {
   formatDate,
   formatNumber,
 } from "@/components/ui";
+import { LiveWeather } from "@/components/weather/live-weather";
 import { WeatherPanel } from "@/components/weather/weather-panel";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
@@ -150,6 +151,17 @@ export default async function DashboardPage({
                 </form>
               </div>
             </>
+          ) : primaryFarm.latitude != null && primaryFarm.longitude != null ? (
+            <div className="space-y-3">
+              <LiveWeather latitude={primaryFarm.latitude} longitude={primaryFarm.longitude} compact />
+              <Link
+                href="/weather"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-800 hover:border-field-300"
+              >
+                {t("dash.openWeather")}
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </div>
           ) : (
             <Callout tone="warning" title={t("dash.weatherUnavailable")}>
               {t("weather.selectLocation")} —{" "}

@@ -963,4 +963,7 @@ export const hi: Dictionary = {
   "recommend.suitability.possible": "सावधानी से संभव",
   "soil.hint.unknown": "इस माप के लिए कोई संदर्भ सीमा नहीं",
   "common.whereToGet": "कहाँ से लें →",
+  "weather.browserFetchNote": "इस सर्वर के पास बाहरी इंटरनेट नहीं है, इसलिए आपके ब्राउज़र ने यह मौसम जानकारी सीधे Open-Meteo से ली है। वही स्रोत, वही गणना — कोई अनुमानित आँकड़ा नहीं।",
+  "weather.refreshNow": "फिर से लाएँ",
+  "map.browserSearchNote": "इस सर्वर के पास इंटरनेट नहीं है, इसलिए खोज आपके ब्राउज़र से सीधे Mapbox पर गई।",
 };

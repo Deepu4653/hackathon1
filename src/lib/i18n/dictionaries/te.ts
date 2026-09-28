@@ -963,4 +963,7 @@ export const te: Dictionary = {
   "recommend.suitability.possible": "జాగ్రత్తతో సాధ్యం",
   "soil.hint.unknown": "ఈ కొలతకు సూచన పరిధి లేదు",
   "common.whereToGet": "ఎక్కడ నుంచి పొందాలి →",
+  "weather.browserFetchNote": "ఈ సర్వర్‌కు బయటి ఇంటర్నెట్ లేదు, కాబట్టి మీ బ్రౌజర్ ఈ వాతావరణ సమాచారాన్ని నేరుగా Open-Meteo నుంచి తెచ్చింది. అదే మూలం, అదే లెక్క — ఏ విలువ అనుమానించి రాయలేదు.",
+  "weather.refreshNow": "మళ్లీ తెచ్చుకోండి",
+  "map.browserSearchNote": "ఈ సర్వర్‌కు ఇంటర్నెట్ లేదు, కాబట్టి వెతుకుడు మీ బ్రౌజర్ నుంచి నేరుగా Mapbox కు వెళ్లింది.",
 };

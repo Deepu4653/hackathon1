@@ -149,7 +149,8 @@ git-ignored — never commit it):
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server | Supabase anon/publishable key (safe in browser, RLS applies) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | storage, admin moderation, price import. Never sent to the browser |
 | `GEMINI_API_KEY` | server only | assistant, crop photo analysis, crop advice |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Mapbox maps and place search (falls back to OpenStreetMap when absent) |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Mapbox maps and place search (falls back to OpenStreetMap when absent, and to
+browser-side Mapbox lookup when the server itself is offline) |
 
 Optional: `DATA_GOV_IN_API_KEY` (real mandi prices), `DATA_GOV_MANDI_RESOURCE_ID`, `SMTP_URL` + `MAIL_FROM`
 (password-reset email), `ADMIN_EMAILS` (comma-separated; promoted to admin on sign-in), `ALLOW_DEV_RESET_LINK`
@@ -203,24 +204,41 @@ uses Supabase Auth + Postgres + Storage + RLS. Force it either way with `DATA_BA
 File objects live under `<user-id>/<filename>`; the storage policies compare that first folder segment with
 `auth.uid()`, so one user can never read or overwrite another user's uploads.
 
-> **Network note (this development sandbox).** The sandbox this project is currently running in cannot open
-> a TLS session to `*.supabase.co` — its egress allows the npm registry and GitHub only — so the checked-in
-> `.env.local` pins `DATA_BACKEND=local` and the preview runs on the built-in PostgreSQL. The URL is already
-> filled in; add the publishable key and remove that one line on any host with normal internet access and
-> the identical code runs against your Supabase project (no code changes, no second implementation).
+> **Network note (this development sandbox).** The sandbox this project is currently running in allows
+> outbound traffic to the npm registry and GitHub only, so nothing server-side can reach `*.supabase.co`,
+> `api.open-meteo.com`, `api.mapbox.com` or `generativelanguage.googleapis.com`. Consequences, all of them
+> handled rather than hidden:
+>
+> * `.env.local` pins `DATA_BACKEND=local`, so the preview runs on the built-in PostgreSQL. Remove that one
+>   line on a host with normal internet access and the identical code runs against your Supabase project —
+>   no code changes, no second implementation.
+> * Weather and map **search** are fetched by the visitor's browser from the same providers instead, and the
+>   UI says so on screen (see §9).
+> * AI answers stay server-side on purpose: `GEMINI_API_KEY` must never reach a browser, so the assistant,
+>   Crop Doctor and crop advice report "AI service is temporarily unavailable" **in this sandbox only**.
+>   On any networked host they work — check with `npm run test:integrations`.
 
 ### 6.2 Gemini
 1. Create a key at [Google AI Studio](https://aistudio.google.com/app/apikey).
 2. Put it in `GEMINI_API_KEY` (server-only) and restart. `GEMINI_MODEL` / `GEMINI_VISION_MODEL` let you pin
    specific models; the default is `gemini-2.5-flash`.
-3. Without a key the assistant, Crop Doctor and recommendation screens stay visible but clearly state that
+3. **Key formats.** Google now issues these keys in the new `AQ.…` *auth key* format (older keys start with
+   `AIza`). `AQ.` keys are only accepted when the key travels in the `x-goog-api-key` **header** — passing it
+   as a `?key=` query parameter returns 404. `src/lib/gemini/client.ts` always uses the header, so both formats
+   work here.
+4. Without a key the assistant, Crop Doctor and recommendation screens stay visible but clearly state that
    the AI service is not configured — they never fake an answer.
+5. Prove the key works end to end on a networked host: `npm run test:integrations`.
 
 ### 6.3 Mapbox
 1. Create a token at [mapbox.com](https://account.mapbox.com/access-tokens/) (a public `pk.…` token is enough).
 2. Put it in `NEXT_PUBLIC_MAPBOX_TOKEN` and restart. Map style: `mapbox://styles/mapbox/satellite-streets-v12`.
 3. Without a token the app automatically uses OpenStreetMap raster tiles and Nominatim search, so maps and
    location search keep working.
+4. Search normally goes through the server (`/api/geocode`) so the token never leaves the backend. If the
+   **server** has no outbound internet but the visitor's browser does, the browser falls back to asking
+   Mapbox directly with the same public `pk.` token, and the UI says so. Secret `sk.` tokens are never sent
+   to a browser. `npm run test:integrations` checks the token.
 
 ### 6.4 Market prices (optional)
 1. Register at [data.gov.in](https://data.gov.in) and copy your API key into `DATA_GOV_IN_API_KEY`.
@@ -269,6 +287,7 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
 | `npm run test:db` | database + RLS integration tests (uses its own scratch database) |
 | `npm run test:flow` | end-to-end flow: real accounts, real rows, every screen, role boundaries |
 | `npm run test:i18n` | every dynamically built translation key exists in the dictionaries |
+| `npm run test:integrations` | live check of Open-Meteo, Gemini, Mapbox and data.gov.in keys (run on a networked host) |
 | `npm run test:http` | HTTP smoke tests against a running server |
 | `npm run supabase:sql [-- --seed]` | generate `supabase/remote/setup.sql` for the Supabase SQL editor |
 | `npm run test:supabase` | verify a real Supabase project (tables, RLS, buckets, auth) |
@@ -277,6 +296,15 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
 ---
 
 ## 9. Testing checklist
+
+`npm run test:integrations` (run it on a host with normal internet) makes one real request per provider:
+Open-Meteo's forecast for Vijayawada, Gemini's model list plus a tiny `generateContent` call, a Mapbox
+geocoding lookup and (if configured) a one-row Agmarknet price fetch. It prints masked key prefixes only,
+never the values, and exits non-zero when a configured provider fails.
+
+If the **server** cannot reach Open-Meteo or Mapbox but the visitor's browser can, the weather page and the
+map search fall back to asking those providers from the browser — same endpoints, same mapping, same real
+data — and both screens say so on screen. This is what keeps the sandbox preview honest and useful.
 
 `npm run test:db` (real PostgreSQL, no mocks) verifies: migrations applied, RLS enabled on every table,
 anonymous visitors cannot read profiles/farms/messages/AI conversations, a farmer sees only their own farm
@@ -353,7 +381,7 @@ in a normal deployment:
 | Missing variable | Effect | Behaviour |
 |---|---|---|
 | `GEMINI_API_KEY` | assistant, crop photo analysis, crop advice | screens stay, clearly labelled "AI service is not configured"; no fake answers |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox styling, Mapbox search | falls back to OpenStreetMap tiles + Nominatim |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox styling, Mapbox search | falls back to OpenStreetMap tiles + Nominatim, then to browser-side Mapbox search if only the server is offline |
 | `NEXT_PUBLIC_SUPABASE_URL` / `ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | cloud database, cloud auth, cloud storage | app runs on local PostgreSQL (PGlite) with the same schema and RLS |
 | `DATA_GOV_IN_API_KEY` | mandi price import | import reports the missing variable; no prices are invented |
 | `SMTP_URL` | password-reset email | in local development, set `ALLOW_DEV_RESET_LINK=true` to show the link in the UI; nothing pretends an email was sent |

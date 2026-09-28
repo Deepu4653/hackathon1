@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Crosshair, Loader2, MapPin, Search } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
+import { canGeocodeInBrowser, searchPlacesInBrowser } from "@/lib/maps/browser-search";
 
 interface Place {
   id: string;
@@ -34,12 +35,15 @@ export function LocationPicker({
   currentLatitude,
   currentLongitude,
   farms,
+  mapboxToken = null,
   compact = false,
 }: {
   currentLabel: string | null;
   currentLatitude: number | null;
   currentLongitude: number | null;
   farms: Array<{ id: string; name: string; latitude: number | null; longitude: number | null; village: string | null }>;
+  /** Public Mapbox token, used only if the server proxy has no internet. */
+  mapboxToken?: string | null;
   compact?: boolean;
 }) {
   const { t, locale } = useI18n();
@@ -49,28 +53,55 @@ export function LocationPicker({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [usedBrowserSearch, setUsedBrowserSearch] = useState(false);
   const [, startTransition] = useTransition();
+
+  async function searchInBrowser(query: string): Promise<boolean> {
+    const token = mapboxToken;
+    if (!canGeocodeInBrowser(token)) return false;
+    try {
+      const found = await searchPlacesInBrowser(
+        query,
+        token,
+        currentLatitude !== null && currentLongitude !== null
+          ? { latitude: currentLatitude, longitude: currentLongitude }
+          : null,
+      );
+      if (found.length === 0) return false;
+      setPlaces(found);
+      setUsedBrowserSearch(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async function runSearch(event: React.FormEvent) {
     event.preventDefault();
-    if (query.trim().length < 3) {
+    const trimmed = query.trim();
+    if (trimmed.length < 3) {
       setError(t("map.noSearchResults"));
       return;
     }
     setSearching(true);
     setError(null);
     try {
-      const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`);
       const payload = (await response.json()) as { ok: boolean; places?: Place[]; error?: string };
-      if (!payload.ok) {
-        setError(payload.error ?? t("errors.map"));
-        setPlaces([]);
-      } else {
+      if (payload.ok) {
         setPlaces(payload.places ?? []);
+        setUsedBrowserSearch(false);
         if ((payload.places ?? []).length === 0) setError(t("map.noSearchResults"));
+        return;
       }
+      // The proxy answered but could not search (offline host) — try the browser.
+      if (await searchInBrowser(trimmed)) return;
+      setError(payload.error ?? t("errors.map"));
+      setPlaces([]);
     } catch {
+      if (await searchInBrowser(trimmed)) return;
       setError(t("errors.map"));
+      setPlaces([]);
     } finally {
       setSearching(false);
     }
@@ -180,6 +211,7 @@ export function LocationPicker({
       ) : null}
 
       {error ? <p className="text-sm font-medium text-danger-600">{error}</p> : null}
+      {usedBrowserSearch ? <p className="text-xs text-ink-500">{t("map.browserSearchNote")}</p> : null}
 
       {places.length > 0 ? (
         <ul className="divide-y divide-ink-100 overflow-hidden rounded-xl border border-ink-200 bg-white">

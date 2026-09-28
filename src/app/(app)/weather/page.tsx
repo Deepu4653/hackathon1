@@ -1,13 +1,14 @@
-import Link from "next/link";
 import { CloudSun, MapPin, Save } from "lucide-react";
 import { Callout, Card, CardBody, CardHeader, PageHeader, formatDateTime } from "@/components/ui";
 import { LocationPicker } from "@/components/weather/location-picker";
+import { LiveWeather } from "@/components/weather/live-weather";
 import { WeatherPanel } from "@/components/weather/weather-panel";
 import { SubmitButton } from "@/components/forms";
 import { getSessionUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { fetchWeather } from "@/lib/weather/open-meteo";
 import { resolveWeatherLocation } from "@/lib/weather/location";
+import { getMapConfig } from "@/lib/maps/geocode";
 import { listFarms } from "@/lib/repos/farms";
 import { getLatestStoredWeather } from "@/lib/weather/weather-repo";
 import { saveWeatherAction } from "@/app/actions/weather";
@@ -19,6 +20,7 @@ export default async function WeatherPage() {
   const { t, locale } = await getTranslatorForRequest(user?.profile.simple_mode);
   const location = await resolveWeatherLocation(user?.id ?? null);
   const farms = user ? await listFarms(user.id) : [];
+  const mapConfig = getMapConfig();
 
   const hasLocation = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
   const outcome = hasLocation ? await fetchWeather(location.latitude, location.longitude) : null;
@@ -52,6 +54,7 @@ export default async function WeatherPage() {
             currentLabel={location.label}
             currentLatitude={hasLocation ? location.latitude : null}
             currentLongitude={hasLocation ? location.longitude : null}
+            mapboxToken={mapConfig.token}
             farms={farms.map((farm) => ({
               id: farm.id,
               name: farm.name,
@@ -86,31 +89,30 @@ export default async function WeatherPage() {
             </form>
           ) : null}
         </div>
-      ) : storedFallback ? (
-        <div className="space-y-3">
-          <Callout tone="warning" title={t("weather.unavailable")}>
-            {t("common.source")}: {storedFallback.source} · {formatDateTime(storedFallback.observed_at, locale)}
-          </Callout>
-          <Card>
-            <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Metric label={t("weather.temperature")} value={storedFallback.temperature_c ? `${storedFallback.temperature_c}°C` : "—"} />
-              <Metric label={t("weather.humidity")} value={storedFallback.humidity_pct ? `${storedFallback.humidity_pct}%` : "—"} />
-              <Metric label={t("weather.wind")} value={storedFallback.wind_kph ? `${storedFallback.wind_kph} km/h` : "—"} />
-              <Metric
-                label={t("weather.rainChance")}
-                value={storedFallback.rain_probability_pct ? `${storedFallback.rain_probability_pct}%` : "—"}
-              />
-            </CardBody>
-          </Card>
-        </div>
       ) : (
-        <Callout tone="warning" title={t("weather.unavailable")}>
-          {t("common.retry")}
-          {" "}
-          <Link href="/weather" className="font-semibold underline">
-            {t("weather.title")}
-          </Link>
-        </Callout>
+        <div className="space-y-4">
+          <LiveWeather latitude={location.latitude} longitude={location.longitude} />
+
+          {storedFallback ? (
+            <div className="space-y-3">
+              <Callout tone="warning" title={t("weather.unavailable")}>
+                {t("common.source")}: {storedFallback.source} · {formatDateTime(storedFallback.observed_at, locale)}
+              </Callout>
+              <Card>
+                <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Metric label={t("weather.temperature")} value={storedFallback.temperature_c ? `${storedFallback.temperature_c}°C` : "—"} />
+                  <Metric label={t("weather.humidity")} value={storedFallback.humidity_pct ? `${storedFallback.humidity_pct}%` : "—"} />
+                  <Metric label={t("weather.wind")} value={storedFallback.wind_kph ? `${storedFallback.wind_kph} km/h` : "—"} />
+                  <Metric
+                    label={t("weather.rainChance")}
+                    value={storedFallback.rain_probability_pct ? `${storedFallback.rain_probability_pct}%` : "—"}
+                  />
+                </CardBody>
+              </Card>
+
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );

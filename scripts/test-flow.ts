@@ -252,13 +252,32 @@ async function main() {
     check("the listing detail shows the real title", detail.html.includes("Flow test paddy"));
   }
 
-  console.log("\nHonest empty states (no integrations configured)");
+  // Which honest behaviour is correct depends on whether a Gemini key exists —
+  // both branches are checked, so this stays meaningful with or without one.
+  const geminiConfigured = Boolean((process.env.GEMINI_API_KEY ?? "").trim());
+  console.log(
+    `\nHonest AI states (GEMINI_API_KEY ${geminiConfigured ? "configured" : "not configured"})`,
+  );
   const assistant = await visit("/assistant", farmer.cookie);
-  check("assistant names the missing GEMINI_API_KEY instead of inventing an answer", assistant.html.includes("GEMINI_API_KEY"));
+  check(
+    geminiConfigured
+      ? "assistant says Gemini is configured instead of pretending it is absent"
+      : "assistant names the missing GEMINI_API_KEY instead of inventing an answer",
+    geminiConfigured ? assistant.html.includes("Gemini is configured") : assistant.html.includes("GEMINI_API_KEY"),
+  );
+  check(
+    "assistant shows an empty state, never a pre-filled answer",
+    assistant.html.includes("Ask your first question") || assistant.html.includes("Previous chats"),
+  );
+
   const doctor = await visit("/crop-doctor", farmer.cookie);
   check(
-    "crop doctor refuses to analyse without the vision model configured",
-    doctor.html.includes("GEMINI_API_KEY") || doctor.html.includes("not available") || doctor.html.includes("not configured"),
+    geminiConfigured
+      ? "crop doctor shows no diagnosis before a photo is uploaded"
+      : "crop doctor refuses to analyse without the vision model configured",
+    geminiConfigured
+      ? doctor.html.includes("Check this photo") && !doctor.html.includes("Possible problem")
+      : doctor.html.includes("GEMINI_API_KEY") || doctor.html.includes("not available") || doctor.html.includes("not configured"),
   );
   const prices = await visit("/market-prices", farmer.cookie);
   check(

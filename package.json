@@ -20,7 +20,8 @@
     "test:i18n": "tsx scripts/test-i18n.ts",
     "test:supabase": "tsx scripts/test-supabase.ts",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run test:i18n && npm run test:db && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run test:i18n && npm run test:db && npm run build",
+    "test:integrations": "tsx scripts/test-integrations.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
