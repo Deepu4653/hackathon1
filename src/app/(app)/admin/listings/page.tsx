@@ -6,8 +6,9 @@ import { setListingFeaturedAction, setListingStatusAdminAction } from "@/app/act
 import { requireAdmin } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listAllListings } from "@/lib/repos/admin";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Admin listings" };
+export const generateMetadata = pageMetadata("admin.nav.listings");
 
 const STATUS_FILTERS = ["all", "active", "draft", "sold", "archived", "removed"] as const;
 

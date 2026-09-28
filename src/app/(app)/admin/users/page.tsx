@@ -6,8 +6,9 @@ import { requireAdmin } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listUsersForAdmin } from "@/lib/repos/admin";
 import { USER_ROLES } from "@/lib/db/types";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Admin users" };
+export const generateMetadata = pageMetadata("admin.nav.users");
 
 export default async function AdminUsersPage({
   searchParams,

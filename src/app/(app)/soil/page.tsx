@@ -7,8 +7,9 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { getLatestSoilRecord, interpretSoil, listSoilRecords } from "@/lib/repos/soil";
 import { listFarms } from "@/lib/repos/farms";
 import type { SoilRecord } from "@/lib/db/types";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Soil" };
+export const generateMetadata = pageMetadata("soil.title");
 
 const SOURCE_LABEL: Record<SoilRecord["source"], string> = {
   manual: "soil.source.manual",

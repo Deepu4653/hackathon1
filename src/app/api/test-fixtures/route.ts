@@ -63,6 +63,14 @@ function notFound() {
   return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
 }
 
+/**
+ * Any method other than POST looks like a missing page, exactly like a disabled
+ * harness — a 405 would tell a scanner that this route exists at all.
+ */
+export async function GET() {
+  return notFound();
+}
+
 export async function POST(request: Request) {
   if (!authorised(request)) return notFound();
 

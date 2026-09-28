@@ -36,11 +36,18 @@ export async function resolveWeatherLocation(userId: string | null): Promise<Res
     farm = await getPrimaryFarm(userId);
   }
 
-  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+  // The cookie is written by the browser, so it is validated like any input:
+  // out-of-range values are ignored rather than forwarded to Open-Meteo.
+  if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
     return { latitude: lat, longitude: lon, label, source: "cookie", farm };
   }
 
-  if (farm?.latitude != null && farm?.longitude != null) {
+  if (
+    farm?.latitude != null &&
+    farm?.longitude != null &&
+    Math.abs(farm.latitude) <= 90 &&
+    Math.abs(farm.longitude) <= 180
+  ) {
     return {
       latitude: farm.latitude,
       longitude: farm.longitude,

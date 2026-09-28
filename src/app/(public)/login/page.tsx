@@ -5,8 +5,9 @@ import { SignInForm, InlineLoader } from "@/components/auth-forms";
 import { signInAction } from "@/app/actions/auth";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { dataBackend } from "@/lib/env";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Sign in" };
+export const generateMetadata = pageMetadata("auth.signInTitle");
 
 async function LoginForm({ nextPath }: { nextPath?: string }) {
   const { t } = await getTranslatorForRequest();

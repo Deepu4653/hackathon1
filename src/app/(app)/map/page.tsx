@@ -6,8 +6,9 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { getMapConfig } from "@/lib/maps/geocode";
 import { listListingPins, listMachineryPins } from "@/lib/repos/listings";
 import { listFarms } from "@/lib/repos/farms";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Map" };
+export const generateMetadata = pageMetadata("map.title");
 
 export default async function MapPage() {
   const user = await requireUser("/map");

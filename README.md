@@ -287,6 +287,7 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
 | `npm run test:db` | database + RLS integration tests (uses its own scratch database) |
 | `npm run test:flow` | end-to-end flow: real accounts, real rows, every screen, role boundaries |
 | `npm run test:i18n` | every dynamically built translation key exists in the dictionaries |
+| `npm run test:crawl` | crawl every page, role and internal link; scan visible text and hostile query strings |
 | `npm run test:integrations` | live check of Open-Meteo, Gemini, Mapbox and data.gov.in keys (run on a networked host) |
 | `npm run test:http` | HTTP smoke tests against a running server |
 | `npm run supabase:sql [-- --seed]` | generate `supabase/remote/setup.sql` for the Supabase SQL editor |
@@ -296,6 +297,12 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
 ---
 
 ## 9. Testing checklist
+
+`npm run test:crawl` starts a private server, signs in three real accounts and walks the whole product:
+every route for every role, every internal link it can find (dead links fail the run), the visible text of
+each page scanned for `undefined` / `NaN` / `Invalid Date` / raw translation keys / empty links, and a set of
+hostile query strings (`?page=abc`, `?page=9999`, `?q=%`, search-injection attempts) fired at the public pages
+and APIs.
 
 `npm run test:integrations` (run it on a host with normal internet) makes one real request per provider:
 Open-Meteo's forecast for Vijayawada, Gemini's model list plus a tiny `generateContent` call, a Mapbox

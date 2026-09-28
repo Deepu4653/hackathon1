@@ -5,8 +5,9 @@ import { createFarmAction, updateFarmAction, deleteFarmAction, setPrimaryFarmAct
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listFarms } from "@/lib/repos/farms";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "My farms" };
+export const generateMetadata = pageMetadata("farms.title");
 
 export default async function FarmsPage() {
   const user = await requireUser("/farms");

@@ -111,6 +111,23 @@ async function main() {
   const shortQuery = await get("/api/geocode?q=a");
   check("geocode rejects queries that are too short", shortQuery.status === 400, `status ${shortQuery.status}`);
 
+  const impossible = [
+    "/api/geocode?lat=999&lon=999",
+    "/api/geocode?lat=-91&lon=200",
+    "/api/geocode?lat=Infinity&lon=0",
+  ];
+  for (const path of impossible) {
+    const response = await get(path);
+    check(`geocode rejects impossible coordinates (${path.split("?")[1]})`, response.status === 400, `status ${response.status}`);
+  }
+
+  const fixtureProbe = await get("/api/test-fixtures");
+  check(
+    "the fixture harness never advertises itself (GET looks like a missing page)",
+    fixtureProbe.status === 404,
+    `status ${fixtureProbe.status}`,
+  );
+
   const anonymousPreferences = await get("/api/preferences", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -127,6 +144,21 @@ async function main() {
     [400, 403, 404].includes(protectedStoragePath.status),
     `status ${protectedStoragePath.status}`,
   );
+
+  console.log("\nMarketplace query handling (hostile query strings)");
+  const badPage = await get("/market?page=abc");
+  const badPageHtml = await badPage.text();
+  check("GET /market?page=abc → 200", badPage.status === 200, `status ${badPage.status}`);
+  check("…does not render a NaN page", !badPageHtml.includes("NaN"));
+  check("…still renders the marketplace (or its empty state)", badPageHtml.includes("X-FARM AI"));
+
+  const hugePage = await get("/market?page=9999");
+  const hugePageHtml = await hugePage.text();
+  check("GET /market?page=9999 → 200", hugePage.status === 200, `status ${hugePage.status}`);
+  check("…never claims to be page 9999", !hugePageHtml.includes("9999 of"));
+
+  const badPrice = await get("/market?min=abc&max=abc");
+  check("GET /market?min=abc&max=abc → 200", badPrice.status === 200, `status ${badPrice.status}`);
 
   console.log("\nSecurity headers");
   const home = await get("/");

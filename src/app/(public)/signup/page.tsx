@@ -5,8 +5,9 @@ import { signUpAction } from "@/app/actions/auth";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { SELF_ASSIGNABLE_ROLES } from "@/lib/db/types";
 import { dataBackend } from "@/lib/env";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Create account" };
+export const generateMetadata = pageMetadata("nav.signup");
 
 export default async function SignUpPage() {
   const { t, locale } = await getTranslatorForRequest();

@@ -3,8 +3,9 @@ import { Card, CardBody, CardHeader, Callout } from "@/components/ui";
 import { ResetPasswordForm } from "@/components/auth-forms";
 import { resetPasswordAction } from "@/app/actions/auth";
 import { getTranslatorForRequest } from "@/lib/preferences";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Reset password" };
+export const generateMetadata = pageMetadata("meta.resetPassword");
 
 export default async function ResetPasswordPage({
   searchParams,

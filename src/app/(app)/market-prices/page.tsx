@@ -6,8 +6,9 @@ import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { getPriceTrend, listMarketPrices, listPriceDistricts, isPriceImportConfigured } from "@/lib/market/service";
 import { importMarketPricesAction } from "@/app/actions/admin";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Market prices" };
+export const generateMetadata = pageMetadata("prices.title");
 
 export default async function MarketPricesPage({
   searchParams,

@@ -6,8 +6,9 @@ import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listCategories } from "@/lib/repos/categories";
 import { getPrimaryFarm } from "@/lib/repos/farms";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "New listing" };
+export const generateMetadata = pageMetadata("meta.newListing");
 
 export default async function NewListingPage() {
   const user = await requireUser("/listings/new");

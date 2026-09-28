@@ -9,10 +9,23 @@ import { listCategories } from "@/lib/repos/categories";
 import { getFavoriteIds, searchListings } from "@/lib/repos/listings";
 import { getDataClient } from "@/lib/db";
 import type { Listing, ListingKind } from "@/lib/db/types";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Marketplace" };
+export const generateMetadata = pageMetadata("market.title");
 
 const PAGE_SIZE = 12;
+
+/** Query strings are user input: ignore anything that is not a real number. */
+function finiteParam(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function pageParam(value: string | undefined): number {
+  const parsed = finiteParam(value);
+  return parsed === undefined ? 1 : Math.max(1, Math.trunc(parsed));
+}
 
 async function listingDistricts(): Promise<string[]> {
   const db = await getDataClient();
@@ -40,10 +53,10 @@ export default async function MarketPage({
     kind: (params.kind as ListingKind | "all") ?? "all",
     categoryId: params.category,
     district: params.district,
-    minPrice: params.min ? Number(params.min) : undefined,
-    maxPrice: params.max ? Number(params.max) : undefined,
+    minPrice: finiteParam(params.min),
+    maxPrice: finiteParam(params.max),
     sort: (params.sort as "newest" | "price_asc" | "price_desc") ?? "newest",
-    page: params.page ? Math.max(1, Number(params.page)) : 1,
+    page: pageParam(params.page),
     pageSize: PAGE_SIZE,
   });
 

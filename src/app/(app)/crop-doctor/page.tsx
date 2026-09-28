@@ -7,8 +7,9 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { listCropAnalyses } from "@/lib/repos/ai";
 import { listFarms } from "@/lib/repos/farms";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Crop Doctor" };
+export const generateMetadata = pageMetadata("doctor.title");
 
 export default async function CropDoctorPage() {
   const user = await requireUser("/crop-doctor");

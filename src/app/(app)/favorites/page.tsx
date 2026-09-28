@@ -6,8 +6,9 @@ import { toggleFavoriteAction } from "@/app/actions/listings";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listFavorites } from "@/lib/repos/listings";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Saved listings" };
+export const generateMetadata = pageMetadata("favorites.title");
 
 export default async function FavoritesPage() {
   const user = await requireUser("/favorites");

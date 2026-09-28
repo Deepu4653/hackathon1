@@ -966,4 +966,10 @@ export const hi: Dictionary = {
   "weather.browserFetchNote": "इस सर्वर के पास बाहरी इंटरनेट नहीं है, इसलिए आपके ब्राउज़र ने यह मौसम जानकारी सीधे Open-Meteo से ली है। वही स्रोत, वही गणना — कोई अनुमानित आँकड़ा नहीं।",
   "weather.refreshNow": "फिर से लाएँ",
   "map.browserSearchNote": "इस सर्वर के पास इंटरनेट नहीं है, इसलिए खोज आपके ब्राउज़र से सीधे Mapbox पर गई।",
+  "meta.aiConversation": "AI बातचीत",
+  "meta.listing": "लिस्टिंग",
+  "meta.conversation": "बातचीत",
+  "meta.newListing": "नई लिस्टिंग",
+  "meta.forgotPassword": "पासवर्ड भूल गए",
+  "meta.resetPassword": "पासवर्ड रीसेट",
 };

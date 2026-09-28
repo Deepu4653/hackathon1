@@ -18,7 +18,8 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 function writeCookie(name: string, value: string) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax${secure}`;
 }
 
 export function I18nProvider({

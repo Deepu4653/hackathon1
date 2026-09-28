@@ -14,7 +14,14 @@ export async function GET(request: NextRequest) {
   if (lat && lon) {
     const latitude = Number(lat);
     const longitude = Number(lon);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
       return NextResponse.json({ ok: false, error: "Invalid coordinates." }, { status: 400 });
     }
     const place = await reverseGeocode(latitude, longitude);

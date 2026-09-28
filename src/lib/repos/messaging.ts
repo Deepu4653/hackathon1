@@ -210,11 +210,14 @@ export async function countUnreadMessages(userId: string): Promise<number> {
       .limit(50);
     const ids = ((conversations ?? []) as Conversation[]).map((conversation) => conversation.id);
     if (ids.length === 0) return 0;
+    // `sender_id != me` matters: your own message stays unread until the other
+    // person opens the thread, and counting it would badge your own inbox.
     const { data: messages, count } = await db
       .from<Message>("messages")
       .select("id,sender_id,read_at", { count: "exact" })
       .in("conversation_id", ids)
       .is("read_at", null)
+      .neq("sender_id", userId)
       .limit(200);
     const rows = (messages ?? []) as Message[];
     return count ?? rows.filter((message) => message.sender_id !== userId).length;

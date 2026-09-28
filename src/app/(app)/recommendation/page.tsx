@@ -8,8 +8,9 @@ import { getPrimaryFarm } from "@/lib/repos/farms";
 import { getLatestSoilRecord } from "@/lib/repos/soil";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { localisedName } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Crop recommendation" };
+export const generateMetadata = pageMetadata("recommend.title");
 
 export default async function RecommendationPage() {
   const user = await requireUser("/recommendation");

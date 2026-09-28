@@ -11,8 +11,9 @@ import { getAiConversation, listAiConversations, listAiMessages } from "@/lib/re
 import { listFarms } from "@/lib/repos/farms";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { countUsageSince } from "@/lib/repos/ai";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "AI conversation" };
+export const generateMetadata = pageMetadata("meta.aiConversation");
 
 function startOfTodayIso(): string {
   const now = new Date();

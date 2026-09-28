@@ -39,8 +39,9 @@ import { fetchWeather } from "@/lib/weather/open-meteo";
 import { saveWeatherAction } from "@/app/actions/weather";
 import { SubmitButton } from "@/components/forms";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Dashboard" };
+export const generateMetadata = pageMetadata("nav.dashboard");
 
 export default async function DashboardPage({
   searchParams,

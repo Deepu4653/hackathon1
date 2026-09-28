@@ -11,8 +11,9 @@ import { getMyListing, listImagesForListings } from "@/lib/repos/listings";
 import { getPrimaryFarm } from "@/lib/repos/farms";
 import { getDataClient } from "@/lib/db";
 import type { Machinery } from "@/lib/db/types";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Edit listing" };
+export const generateMetadata = pageMetadata("market.editTitle");
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

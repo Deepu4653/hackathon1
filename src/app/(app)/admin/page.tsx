@@ -6,8 +6,9 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { getPlatformStats, listAuditLogs, listRecentAnalyses } from "@/lib/repos/admin";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { dataBackend } from "@/lib/env";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Admin" };
+export const generateMetadata = pageMetadata("admin.title");
 
 export default async function AdminOverviewPage() {
   const admin = await requireAdmin();

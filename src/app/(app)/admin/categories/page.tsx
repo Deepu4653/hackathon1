@@ -5,8 +5,9 @@ import { saveCategoryAction, setCategoryActiveAction } from "@/app/actions/admin
 import { requireAdmin } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listAllCategories } from "@/lib/repos/categories";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Admin categories" };
+export const generateMetadata = pageMetadata("admin.nav.categories");
 
 export default async function AdminCategoriesPage() {
   const admin = await requireAdmin();

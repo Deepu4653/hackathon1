@@ -3,8 +3,9 @@ import { ForgotPasswordForm } from "@/components/auth-forms";
 import { forgotPasswordAction } from "@/app/actions/auth";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { isMailConfigured } from "@/lib/auth/mail-env";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Forgot password" };
+export const generateMetadata = pageMetadata("meta.forgotPassword");
 
 export default async function ForgotPasswordPage() {
   const { t } = await getTranslatorForRequest();

@@ -6,8 +6,9 @@ import { deleteListingAction, setListingStatusAction } from "@/app/actions/listi
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listImagesForListings, listMyListings } from "@/lib/repos/listings";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "My listings" };
+export const generateMetadata = pageMetadata("market.myListings");
 
 export default async function MyListingsPage({
   searchParams,

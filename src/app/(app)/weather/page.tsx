@@ -12,8 +12,9 @@ import { getMapConfig } from "@/lib/maps/geocode";
 import { listFarms } from "@/lib/repos/farms";
 import { getLatestStoredWeather } from "@/lib/weather/weather-repo";
 import { saveWeatherAction } from "@/app/actions/weather";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Weather" };
+export const generateMetadata = pageMetadata("weather.title");
 
 export default async function WeatherPage() {
   const user = await getSessionUser();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Bug,
@@ -19,9 +20,12 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { dataBackend, publicEnv } from "@/lib/env";
 import { isGeminiConfigured, isMapboxConfigured, isSupabaseConfigured, isPriceImportConfigured } from "@/lib/integrations";
 
-export const metadata = {
-  title: "X-FARM AI — one platform, every farm need",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslatorForRequest();
+  // `absolute` opts out of the layout template, which would otherwise repeat
+  // the brand name: the home page is the brand.
+  return { title: { absolute: `${t("app.name")} — ${t("app.tagline")}` } };
+}
 
 /** Where each credential is issued, so setup is one click instead of a hunt. */
 const KEY_SOURCES: Record<string, string> = {

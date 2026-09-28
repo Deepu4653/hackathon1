@@ -7,8 +7,9 @@ import { markConversationReadAction, sendMessageAction } from "@/app/actions/mes
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { getConversation, markConversationRead } from "@/lib/repos/messaging";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Conversation" };
+export const generateMetadata = pageMetadata("meta.conversation");
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -7,8 +7,9 @@ import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listNotifications } from "@/lib/repos/messaging";
 import type { Notification } from "@/lib/db/types";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Notifications" };
+export const generateMetadata = pageMetadata("notifications.title");
 
 const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
   weather_alert: CloudRain,

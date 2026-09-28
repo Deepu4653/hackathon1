@@ -7,8 +7,9 @@ import { getTranslatorForRequest } from "@/lib/preferences";
 import { listAiConversations } from "@/lib/repos/ai";
 import { listFarms } from "@/lib/repos/farms";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "AI assistant" };
+export const generateMetadata = pageMetadata("nav.assistant");
 
 export default async function AssistantPage() {
   const user = await requireUser("/assistant");

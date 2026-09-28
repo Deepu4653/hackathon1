@@ -4,8 +4,9 @@ import { Badge, Card, CardBody, EmptyState, PageHeader, formatDateTime } from "@
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listConversations } from "@/lib/repos/messaging";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Messages" };
+export const generateMetadata = pageMetadata("messages.title");
 
 export default async function MessagesPage() {
   const user = await requireUser("/messages");

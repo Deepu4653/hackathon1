@@ -285,6 +285,48 @@ async function main() {
     prices.html.includes("No sourced price rows") || prices.html.includes("Real data only"),
   );
 
+  console.log("\nUnread message badges");
+
+  /** The badge rendered next to the /messages link (mobile tab bar is last). */
+  const messagesBadge = (html: string): number => {
+    const at = html.lastIndexOf('href="/messages"');
+    if (at === -1) return 0;
+    const slice = html.slice(at, at + 1200);
+    const match = /rounded-full[^>]*>\s*(\d{1,3})\s*</.exec(slice);
+    return match ? Number(match[1]) : 0;
+  };
+
+  // The buyer wrote two messages and has received none: their own words must
+  // never badge their inbox. The farmer received both and must see "2".
+  const buyerDashboard = await visit("/dashboard", buyer.cookie);
+  check(
+    "a buyer who only sent messages has no unread badge",
+    messagesBadge(buyerDashboard.html) === 0,
+    `badge ${messagesBadge(buyerDashboard.html)}`,
+  );
+  const farmerDashboard = await visit("/dashboard", farmer.cookie);
+  check(
+    "the farmer who received them sees 2 unread",
+    messagesBadge(farmerDashboard.html) === 2,
+    `badge ${messagesBadge(farmerDashboard.html)}`,
+  );
+
+  console.log("\nLanguage reaches the browser tab");
+  const teluguDash = await visit("/dashboard", `${farmer.cookie}; xfarm-locale=te`);
+  const teluguTitle = /<title>([^<]*)<\/title>/.exec(teluguDash.html)?.[1] ?? "";
+  check(
+    "the Telugu dashboard has a Telugu <title>",
+    teluguTitle.length > 0 && !/^Dashboard/.test(teluguTitle),
+    `title ${JSON.stringify(teluguTitle)}`,
+  );
+  const hindiMarket = await visit("/market", `${buyer.cookie}; xfarm-locale=hi`);
+  const hindiTitle = /<title>([^<]*)<\/title>/.exec(hindiMarket.html)?.[1] ?? "";
+  check(
+    "the Hindi marketplace has a Hindi <title>",
+    hindiTitle.length > 0 && hindiTitle !== "Marketplace · X-FARM AI",
+    `title ${JSON.stringify(hindiTitle)}`,
+  );
+
   console.log("\nPublic pages (anonymous visitor)");
   for (const pathname of ["/", "/login", "/signup", "/market"]) {
     const page = await visit(pathname);

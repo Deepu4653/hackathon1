@@ -966,4 +966,10 @@ export const te: Dictionary = {
   "weather.browserFetchNote": "ఈ సర్వర్‌కు బయటి ఇంటర్నెట్ లేదు, కాబట్టి మీ బ్రౌజర్ ఈ వాతావరణ సమాచారాన్ని నేరుగా Open-Meteo నుంచి తెచ్చింది. అదే మూలం, అదే లెక్క — ఏ విలువ అనుమానించి రాయలేదు.",
   "weather.refreshNow": "మళ్లీ తెచ్చుకోండి",
   "map.browserSearchNote": "ఈ సర్వర్‌కు ఇంటర్నెట్ లేదు, కాబట్టి వెతుకుడు మీ బ్రౌజర్ నుంచి నేరుగా Mapbox కు వెళ్లింది.",
+  "meta.aiConversation": "AI సంభాషణ",
+  "meta.listing": "ప్రకటన",
+  "meta.conversation": "సంభాషణ",
+  "meta.newListing": "కొత్త ప్రకటన",
+  "meta.forgotPassword": "పాస్‌వర్డ్ మర్చిపోయారా",
+  "meta.resetPassword": "పాస్‌వర్డ్ రీసెట్",
 };

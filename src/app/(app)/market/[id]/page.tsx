@@ -29,8 +29,9 @@ import { getListingDetail, incrementListingViews } from "@/lib/repos/listings";
 import { toggleFavoriteAction, reportListingAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
 import { MarketMap } from "@/components/map/market-map";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Listing" };
+export const generateMetadata = pageMetadata("meta.listing");
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

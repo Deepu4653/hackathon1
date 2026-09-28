@@ -51,7 +51,7 @@ function haversineKm(a: [number, number], b: [number, number]): number {
 
 export async function searchListings(filters: ListingFilters = {}): Promise<ListingSearchResult> {
   const db = await getDataClient();
-  const page = Math.max(1, filters.page ?? 1);
+  const requestedPage = Number.isFinite(filters.page) ? Math.max(1, Math.trunc(filters.page as number)) : 1;
   const pageSize = Math.min(Math.max(1, filters.pageSize ?? 12), MAX_PAGE_SIZE);
   const statuses = filters.statuses ?? ["active"];
 
@@ -64,8 +64,12 @@ export async function searchListings(filters: ListingFilters = {}): Promise<List
     if (filters.state) query = query.eq("state", filters.state);
     if (filters.sellerId) query = query.eq("seller_id", filters.sellerId);
     if (filters.featuredOnly) query = query.eq("is_featured", true);
-    if (typeof filters.minPrice === "number") query = query.gte("price_per_unit", filters.minPrice);
-    if (typeof filters.maxPrice === "number") query = query.lte("price_per_unit", filters.maxPrice);
+    if (typeof filters.minPrice === "number" && Number.isFinite(filters.minPrice)) {
+      query = query.gte("price_per_unit", filters.minPrice);
+    }
+    if (typeof filters.maxPrice === "number" && Number.isFinite(filters.maxPrice)) {
+      query = query.lte("price_per_unit", filters.maxPrice);
+    }
     if (filters.q && filters.q.trim().length >= 2) {
       query = query.textSearch("search_document", filters.q.trim(), { type: "websearch", config: "simple" });
     }
@@ -80,15 +84,30 @@ export async function searchListings(filters: ListingFilters = {}): Promise<List
     }
   };
 
-  const { data, error, count } = await build()
-    .range((page - 1) * pageSize, page * pageSize - 1);
+  const run = async (pageNumber: number) => {
+    const { data, error, count } = await build().range((pageNumber - 1) * pageSize, pageNumber * pageSize - 1);
+    return { rows: (data ?? []) as Listing[], total: count ?? null, error };
+  };
 
-  if (error) {
-    console.error("[listings] search failed:", error.message);
-    return { rows: [], total: 0, page, pageSize, hasMore: false };
+  const first = await run(requestedPage);
+  if (first.error) {
+    console.error("[listings] search failed:", first.error.message);
+    return { rows: [], total: 0, page: requestedPage, pageSize, hasMore: false };
   }
 
-  let rows = (data ?? []) as Listing[];
+  let page = requestedPage;
+  let rows = first.rows;
+  let total = first.total ?? rows.length;
+
+  // A stale or hand-edited `?page=` must never render an empty marketplace that
+  // claims to be page 9999 of 2 — fall back to the real last page.
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  if (page > lastPage) {
+    page = lastPage;
+    const clamped = await run(page);
+    rows = clamped.rows;
+    if (clamped.total !== null) total = clamped.total;
+  }
 
   if (filters.sort === "nearest" && typeof filters.latitude === "number" && typeof filters.longitude === "number") {
     const origin: [number, number] = [filters.latitude, filters.longitude];
@@ -113,7 +132,6 @@ export async function searchListings(filters: ListingFilters = {}): Promise<List
     machine_type: machinery.get(row.id)?.machine_type ?? null,
   }));
 
-  const total = count ?? enriched.length;
   return { rows: enriched, total, page, pageSize, hasMore: page * pageSize < total };
 }
 

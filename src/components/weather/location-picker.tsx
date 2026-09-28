@@ -16,8 +16,15 @@ interface Place {
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
+/** Cookie attributes for client-set preference/location cookies. */
+function cookieAttributes(maxAgeSeconds: number): string {
+  // `secure` only on HTTPS: browsers reject Secure cookies on plain http://localhost.
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; secure" : "";
+  return `path=/; max-age=${maxAgeSeconds}; samesite=lax${secure}`;
+}
+
 function writeLocationCookies(latitude: number, longitude: number, label: string) {
-  const base = `path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
+  const base = cookieAttributes(COOKIE_MAX_AGE);
   document.cookie = `xfarm-lat=${latitude.toFixed(4)}; ${base}`;
   document.cookie = `xfarm-lon=${longitude.toFixed(4)}; ${base}`;
   document.cookie = `xfarm-place=${encodeURIComponent(label)}; ${base}`;

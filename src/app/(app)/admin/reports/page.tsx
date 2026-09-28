@@ -6,8 +6,9 @@ import { updateReportAction } from "@/app/actions/admin";
 import { requireAdmin } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listReports } from "@/lib/repos/admin";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Admin reports" };
+export const generateMetadata = pageMetadata("admin.nav.reports");
 
 export default async function AdminReportsPage({
   searchParams,

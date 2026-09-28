@@ -15,8 +15,9 @@ import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { listCropCatalogue, listCropRecords } from "@/lib/repos/crops";
 import { listFarms } from "@/lib/repos/farms";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "My crops" };
+export const generateMetadata = pageMetadata("crops.title");
 
 const ACTIVE_STATUSES = ["planned", "sown", "growing"] as const;
 

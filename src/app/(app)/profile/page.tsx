@@ -7,8 +7,9 @@ import { updateProfileAction, changePasswordAction } from "@/app/actions/auth";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslatorForRequest } from "@/lib/preferences";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
+import { pageMetadata } from "@/lib/i18n/metadata";
 
-export const metadata = { title: "Profile" };
+export const generateMetadata = pageMetadata("nav.profile");
 
 export default async function ProfilePage() {
   const user = await requireUser("/profile");
