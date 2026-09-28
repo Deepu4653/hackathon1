@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   X-FARM AI design tokens
+   Agricultural, calm and high-contrast: deep field green, ochre accent for
+   action/warning, warm off-white paper background, strong readable type.
+   No glassmorphism, no neon gradients.
+   ========================================================================== */
+@theme {
+  --color-field-50: #f2f9f2;
+  --color-field-100: #e0f0e1;
+  --color-field-200: #c1e0c4;
+  --color-field-300: #93c99a;
+  --color-field-400: #5fac6b;
+  --color-field-500: #3d8f4c;
+  --color-field-600: #2c733a;
+  --color-field-700: #245c30;
+  --color-field-800: #1e4a29;
+  --color-field-900: #163a20;
+  --color-field-950: #0b2013;
+
+  --color-soil-50: #fdf8f0;
+  --color-soil-100: #f8ecd8;
+  --color-soil-200: #efd6ad;
+  --color-soil-300: #e3ba7b;
+  --color-soil-400: #d69d51;
+  --color-soil-500: #c98434;
+  --color-soil-600: #ae6828;
+  --color-soil-700: #8c4f23;
+  --color-soil-800: #734022;
+  --color-soil-900: #61361f;
+
+  --color-ink-50: #f6f7f6;
+  --color-ink-100: #e8eae8;
+  --color-ink-200: #d2d6d2;
+  --color-ink-300: #a9b0a9;
+  --color-ink-400: #7c857c;
+  --color-ink-500: #5c655c;
+  --color-ink-600: #464d46;
+  --color-ink-700: #333833;
+  --color-ink-800: #1f231f;
+  --color-ink-900: #121511;
+
+  --color-danger-50: #fdf2f2;
+  --color-danger-100: #fbe0e0;
+  --color-danger-500: #c0392b;
+  --color-danger-600: #a02b1f;
+  --color-danger-700: #7d2118;
+
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-600: #1d4ed8;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgba(18, 21, 17, 0.05), 0 4px 16px -8px rgba(18, 21, 17, 0.12);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+
+:root {
+  --app-font-scale: 1;
+  --tap-min: 2.75rem;
+}
+
+/* Simple Mode: bigger text, bigger tap targets, calmer spacing. */
+html[data-simple="true"] {
+  --app-font-scale: 1.09;
+  --tap-min: 3.4rem;
+}
+
+html {
+  font-size: calc(100% * var(--app-font-scale));
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+*:focus-visible {
+  outline: 3px solid var(--color-field-500);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
+}
+
+/* Simple Mode highlights the primary action on each screen. */
+html[data-simple="true"] [data-primary-action] {
+  box-shadow: 0 0 0 3px var(--color-soil-200);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes xf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes xf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-rise {
+  animation: xf-rise 0.35s ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: xf-pulse 1.6s ease-in-out infinite;
+}
+
+.tap-target {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+}
+
+/* Leaflet's own container needs an explicit height. */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--color-field-100);
+  font-family: var(--font-sans);
+}
+
+/* Mapbox GL container */
+.mapboxgl-map {
+  height: 100%;
+  width: 100%;
+}
