@@ -54,7 +54,7 @@ async function LoginForm({ nextPath }: { nextPath?: string }) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; reset?: string }>;
+  searchParams: Promise<{ next?: string; reset?: string; cookie?: string }>;
 }) {
   const params = await searchParams;
   const { t } = await getTranslatorForRequest();
@@ -63,6 +63,11 @@ export default async function LoginPage({
   return (
     <div className="mx-auto max-w-md space-y-4">
       {params.reset ? <Callout tone="success" title={t("auth.resetSuccess")}>{t("auth.resetSuccessBody")}</Callout> : null}
+      {params.cookie === "blocked" ? (
+        <Callout tone="warning" title={t("auth.cookieBlockedTitle")}>
+          {t("auth.cookieBlockedBody")}
+        </Callout>
+      ) : null}
       <Suspense fallback={<InlineLoader label={t("common.loading")} />}>
         <LoginForm nextPath={nextPath} />
       </Suspense>

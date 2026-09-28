@@ -296,6 +296,26 @@ File objects live under `<user-id>/<filename>`; the storage policies compare tha
 
 ---
 
+### 8.1 If signing in appears to work and then bounces you back to /login
+
+That is a cookie-storage problem, not an authentication problem. The server sets
+`xfarm-access-token` / `xfarm-refresh-token` on the sign-in response; if the browser
+refuses to store them, the redirect after sign-in still renders the dashboard (the
+server action's own response) while the next click is anonymous again.
+
+Two causes, both handled by the current code and reported on screen:
+
+* **Plain HTTP with a production build.** `next start` sets `NODE_ENV=production`;
+  a `Secure` cookie over `http://` is silently discarded. `secure` now follows the
+  real request scheme (`x-forwarded-proto`, then `Forwarded`, then `x-forwarded-ssl`,
+  then loopback detection), never `NODE_ENV` alone.
+* **An embedded preview frame whose third-party cookies are blocked.** Open the app
+  in its own browser tab, or allow cookies for the preview host, then sign in again.
+
+Either way you now land on `/login?cookie=blocked` with a plain-language explanation
+instead of a silent loop, and `npm run test:flow` replays the real login form to keep
+it that way.
+
 ## 9. Testing checklist
 
 `npm run test:crawl` starts a private server, signs in three real accounts and walks the whole product:

@@ -285,6 +285,63 @@ async function main() {
     prices.html.includes("No sourced price rows") || prices.html.includes("Real data only"),
   );
 
+  console.log("\nSigning in from a real browser (form replay)");
+  // The fixture route mints sessions directly, so it can never catch a cookie
+  // that a browser would refuse to store. This replays the actual login form.
+  const loginPage = await visit("/login");
+  const actionFields = [...loginPage.html.matchAll(/<input[^>]*type="hidden"[^>]*>/g)]
+    .map((match) => match[0])
+    .map((tag) => ({
+      name: /name="([^"]*)"/.exec(tag)?.[1] ?? "",
+      value: (/value="([^"]*)"/.exec(tag)?.[1] ?? "").replace(/&quot;/g, '"').replace(/&amp;/g, "&"),
+    }))
+    .filter((field) => field.name.startsWith("$ACTION"));
+  check("the login form exposes its server-action fields", actionFields.length > 0, `${actionFields.length} fields`);
+
+  const submitLogin = async (headers: Record<string, string> = {}) => {
+    const form = new FormData();
+    for (const field of actionFields) form.append(field.name, field.value);
+    form.append("email", "flow.farmer@example.com");
+    form.append("password", "FlowTest!2026");
+    const response = await fetch(`${baseUrl}/login`, { method: "POST", body: form, redirect: "manual", headers });
+    const cookies = response.headers.getSetCookie?.() ?? [];
+    return { status: response.status, cookies, session: cookies.find((cookie) => cookie.startsWith("xfarm-access-token=")) };
+  };
+
+  const direct = await submitLogin();
+  check("POST /login answers with a redirect", [302, 303, 307].includes(direct.status), `status ${direct.status}`);
+  check("…and sets a session cookie", Boolean(direct.session));
+  check(
+    "…without Secure on plain HTTP (a Secure cookie over http is silently dropped)",
+    Boolean(direct.session) && !/;\s*Secure/i.test(direct.session as string),
+    direct.session ? direct.session.split(";").slice(1).join(";").trim() : "no cookie",
+  );
+
+  const jar = direct.cookies.map((cookie) => cookie.split(";")[0]).join("; ");
+  const afterLogin = await visit("/dashboard", jar);
+  check("the cookie the browser would store opens the dashboard", afterLogin.status === 200, `status ${afterLogin.status}`);
+  const nextClick = await visit("/messages", jar);
+  check("…and the session survives the next click", nextClick.status === 200, `status ${nextClick.status}`);
+
+  const bounced = await visit("/dashboard?welcome=1");
+  check(
+    "a signed-in visitor whose cookie was dropped is told why",
+    bounced.status !== 200 && bounced.location.includes("cookie=blocked"),
+    `status ${bounced.status} location ${bounced.location}`,
+  );
+  const explained = await visit("/login?next=%2Fdashboard&cookie=blocked");
+  check(
+    "…and the login page explains the dropped cookie",
+    explained.html.includes("did not keep the sign-in cookie"),
+  );
+
+  const proxied = await submitLogin({ "x-forwarded-proto": "https" });
+  check(
+    "behind an HTTPS proxy the session cookie is Secure",
+    Boolean(proxied.session) && /;\s*Secure/i.test(proxied.session as string),
+    proxied.session ? proxied.session.split(";").slice(1).join(";").trim() : "no cookie",
+  );
+
   console.log("\nUnread message badges");
 
   /** The badge rendered next to the /messages link (mobile tab bar is last). */

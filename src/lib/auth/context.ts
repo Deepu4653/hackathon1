@@ -9,6 +9,7 @@
  */
 
 import { cookies, headers } from "next/headers";
+import { isHttpsRequest } from "./cookie-scheme";
 import { dataBackend } from "@/lib/env";
 import { anonContext, userContext, type AuthContext } from "@/lib/db/local/auth-context";
 import {
@@ -34,11 +35,29 @@ export interface ResolvedSession {
   sessionId: string;
 }
 
-function cookieOptions(maxAge: number) {
+/**
+ * Attributes for the session cookies.
+ *
+ * `Secure` follows the ACTUAL request scheme — never `NODE_ENV` alone. A
+ * production build served over plain HTTP (`next start` on
+ * http://localhost:3000, or a proxy that terminates TLS without forwarding the
+ * scheme) must still be able to store the session: a Secure cookie over http is
+ * discarded by the browser, so signing in appears to work (the action's own
+ * response renders the dashboard) and then every later click bounces back to
+ * /login.
+ */
+async function cookieOptions(maxAge: number) {
+  const headerList = await headers();
+  const secure = isHttpsRequest({
+    forwardedProto: headerList.get("x-forwarded-proto"),
+    host: headerList.get("host"),
+    extraHints: [headerList.get("forwarded"), headerList.get("x-forwarded-ssl"), headerList.get("front-end-https")],
+  });
+
   return {
     httpOnly: true as const,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     path: "/",
     maxAge,
   };
@@ -58,14 +77,16 @@ export async function writeSessionCookies(
     role: "authenticated",
     sessionId,
   });
-  cookieStore.set(ACCESS_COOKIE, accessToken, cookieOptions(ACCESS_TOKEN_TTL_SECONDS));
-  cookieStore.set(REFRESH_COOKIE, refreshToken, cookieOptions(REFRESH_TOKEN_TTL_SECONDS));
+  const options = await cookieOptions(ACCESS_TOKEN_TTL_SECONDS);
+  cookieStore.set(ACCESS_COOKIE, accessToken, options);
+  cookieStore.set(REFRESH_COOKIE, refreshToken, { ...options, maxAge: REFRESH_TOKEN_TTL_SECONDS });
 }
 
 export async function clearSessionCookies(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(ACCESS_COOKIE, "", cookieOptions(0));
-  cookieStore.set(REFRESH_COOKIE, "", cookieOptions(0));
+  const options = await cookieOptions(0);
+  cookieStore.set(ACCESS_COOKIE, "", options);
+  cookieStore.set(REFRESH_COOKIE, "", options);
 }
 
 /**

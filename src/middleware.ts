@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { dataBackend, publicEnv } from "@/lib/env";
+import { isHttpsRequest } from "@/lib/auth/cookie-scheme";
 
 /**
  * Route protection.
@@ -46,6 +47,18 @@ export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
   let authenticated: boolean;
 
+  // Same scheme rule as the app's own session cookies: Secure only on HTTPS.
+  const secureCookies = isHttpsRequest({
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    host: request.headers.get("host"),
+    protocol: request.nextUrl.protocol,
+    extraHints: [
+      request.headers.get("forwarded"),
+      request.headers.get("x-forwarded-ssl"),
+      request.headers.get("front-end-https"),
+    ],
+  });
+
   // Which backend is in force — not simply "are credentials present". A
   // deployment can hold Supabase credentials while running the local
   // PostgreSQL fallback (DATA_BACKEND=local); sessions must then be read from
@@ -62,7 +75,7 @@ export async function middleware(request: NextRequest) {
           }
           response = NextResponse.next({ request });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, { ...options, secure: secureCookies });
           }
         },
       },
@@ -76,9 +89,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isProtected(pathname) && !authenticated) {
+    // `welcome=1` means a successful sign-in redirected here, so an unauthenticated
+    // arrival at that moment is the "browser dropped the session cookie" case —
+    // worth explaining on the login page instead of bouncing silently.
+    const cookieDropped = request.nextUrl.searchParams.get("welcome") === "1";
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.search = `?next=${encodeURIComponent(pathname + search)}`;
+    url.search = `?next=${encodeURIComponent(pathname + search)}${cookieDropped ? "&cookie=blocked" : ""}`;
     return NextResponse.redirect(url);
   }
 

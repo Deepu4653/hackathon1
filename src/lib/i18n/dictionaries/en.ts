@@ -971,6 +971,8 @@ export const en = {
   "meta.newListing": "New listing",
   "meta.forgotPassword": "Forgot password",
   "meta.resetPassword": "Reset password",
+  "auth.cookieBlockedTitle": "Your browser did not keep the sign-in cookie",
+  "auth.cookieBlockedBody": "You signed in, but the page you landed on asked again — the browser discarded the session cookie. Allow cookies for this site (an embedded preview usually blocks them), or open the app in its own tab, then sign in again.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
